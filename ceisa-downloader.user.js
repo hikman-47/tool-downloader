@@ -19,7 +19,7 @@
 
 (function () {
   'use strict';
-  const SERVER = 'https://ceisa-test.wsadega60.workers.dev';
+  const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
   const VER = '2.0';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
