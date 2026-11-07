@@ -20,6 +20,16 @@ Tampermonkey adalah ekstensi browser yang menjalankan tool ini. Klik link sesuai
 - Firefox: [Install Tampermonkey untuk Firefox](https://addons.mozilla.org/firefox/addon/tampermonkey/)
 - Browser lain: [tampermonkey.net](https://www.tampermonkey.net/)
 
+**Penting untuk Chrome, Edge, Opera (dan browser Chromium lain): aktifkan izin script**
+
+Setelah Tampermonkey terpasang, browser belum mengizinkannya menjalankan script. Tanpa langkah ini tool terinstal tapi **tidak berjalan** (panel tidak muncul).
+
+1. Klik kanan ikon Tampermonkey, lalu pilih **Manage Extension / Kelola ekstensi** (atau buka `chrome://extensions` / `edge://extensions`, klik **Details** pada Tampermonkey)
+2. Nyalakan toggle **Allow User Scripts**
+3. Jika toggle itu tidak ada (browser versi lama), nyalakan **Developer mode** di pojok kanan atas halaman ekstensi
+
+Firefox tidak perlu langkah ini.
+
 > Sudah punya Tampermonkey? Lewati ke langkah 2.
 
 ### Langkah 2. Pasang Tool
@@ -67,6 +77,7 @@ Tool akan **update otomatis** lewat Tampermonkey, tidak perlu install ulang.
 ## Masalah Umum
 
 **Panel tidak muncul**
+- Pastikan toggle **Allow User Scripts** (atau **Developer mode**) sudah menyala di pengaturan ekstensi Tampermonkey
 - Pastikan Tampermonkey aktif dan tool dalam keadaan ON di dashboard Tampermonkey
 - Pastikan berada di halaman Dokumen Pabean, bukan halaman login
 - Refresh halaman (Ctrl + F5)
