@@ -13,10 +13,12 @@ Panel tool muncul otomatis di halaman **Dokumen Pabean** CEISA.
 
 ### Langkah 1. Pasang Tampermonkey (sekali saja)
 
-Tampermonkey adalah ekstensi browser yang menjalankan tool ini. Pilih sesuai browser:
+Tampermonkey adalah ekstensi browser yang menjalankan tool ini. Klik link sesuai browser, lalu klik **Add / Tambahkan** (atau **Add to Chrome**):
 
-- Chrome / Edge / Brave: cari **Tampermonkey** di toko ekstensi browser, lalu klik **Add / Tambahkan**
-- Firefox: cari **Tampermonkey** di Add-ons, lalu klik **Add to Firefox**
+- Chrome / Brave: [Install Tampermonkey untuk Chrome](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+- Edge: [Install Tampermonkey untuk Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
+- Firefox: [Install Tampermonkey untuk Firefox](https://addons.mozilla.org/firefox/addon/tampermonkey/)
+- Browser lain: [tampermonkey.net](https://www.tampermonkey.net/)
 
 > Sudah punya Tampermonkey? Lewati ke langkah 2.
 
