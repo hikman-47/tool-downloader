@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      2.1
-// @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai, selanjutnya perlu license key.
+// @version      3.0
+// @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
 // @downloadURL  https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '2.1';
+  const VER = '3.0';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -54,7 +54,11 @@
       const x = new URL(String(u), location.origin);
       const p = x.searchParams;
       if (p.get('idUser')) { auth.idUser = p.get('idUser'); }
-      if (p.get('nomorIdentitas')) { auth.nomorIdentitas = p.get('nomorIdentitas'); }
+      if (p.get('nomorIdentitas')) {
+        const baru = !auth.nomorIdentitas;
+        auth.nomorIdentitas = p.get('nomorIdentitas');
+        if (baru) { setTimeout(() => { refreshStat(); }, 800); } // identitas baru tertangkap -> betulkan footer
+      }
       if (p.get('isBumnEkspor')) { auth.bumn = p.get('isBumnEkspor'); }
       if (/dokumen-pabean-portal/.test(x.pathname)) { auth.browseTpl = x.search.replace(/^\?/, ''); }
     } catch (e) { /* abaikan */ }
@@ -96,7 +100,68 @@
     return e ? e * 1000 - Date.now() : null;
   };
 
+  /* =========================================================================
+     2. IDENTITAS EXIM (v3): e = SHA-256(NITKU|username), n = SHA-256(NITKU)
+     Server hanya menerima HASH — NITKU & username mentah tidak pernah dikirim.
+     ========================================================================= */
+  const utf8Bytes = (s) => {
+    const out = [];
+    for (let i = 0; i < s.length; i++) {
+      let c = s.charCodeAt(i);
+      if (c < 0x80) { out.push(c); }
+      else if (c < 0x800) { out.push(0xc0 | (c >> 6), 0x80 | (c & 0x3f)); }
+      else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+        const cp = 0x10000 + ((c - 0xd800) * 0x400) + (s.charCodeAt(++i) - 0xdc00);
+        out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 0x3f), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+      } else { out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f)); }
+    }
+    return new Uint8Array(out);
+  };
+  const sha256hex = async (s) => {
+    try {
+      const buf = await W.crypto.subtle.digest('SHA-256', utf8Bytes(s));
+      return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) { return ''; }
+  };
 
+  let identCache = null; // { nitku, user, e, n }
+  async function computeIdent() {
+    const nitku = String(getIdent() || '').trim();
+    if (!nitku) { return null; }
+    const cl = claims();
+    const user = String(cl.preferred_username || cl.username || '').toLowerCase().trim();
+    if (identCache && identCache.nitku === nitku && identCache.user === user) { return identCache; }
+    const n = await sha256hex(nitku);
+    if (!n) { return null; }
+    const e = user ? await sha256hex(nitku + '|' + user) : '';
+    identCache = { nitku, user, e, n };
+    try { GM_setValue('ck_ident', JSON.stringify({ e, n })); } catch (err) { /* abaikan */ }
+    return identCache;
+  }
+
+  // Parameter identitas untuk panggilan server. Menunggu sampai waitMs agar
+  // tangkapan portal (tabel dokumen) sempat tiba; hasil terbaik yang ada:
+  // { e, n } lengkap, { n } bila username belum terbaca, {} bila belum ada.
+  async function identParams(waitMs) {
+    const deadline = Date.now() + (waitMs || 0);
+    for (;;) {
+      const id = await computeIdent();
+      if (id && id.e) { return { e: id.e, n: id.n }; }
+      if (Date.now() >= deadline) {
+        if (id && id.n) { return { n: id.n }; }
+        return {};
+      }
+      await sleep(200);
+    }
+  }
+
+  const cachedIdent = () => {
+    try {
+      const j = JSON.parse(String(GM_getValue('ck_ident', '') || ''));
+      if (j && (j.e || j.n)) { return j; }
+    } catch (e) { /* abaikan */ }
+    return null;
+  };
 
   /* =========================================================================
      LISENSI: Device ID, panggilan server, panel kunci
@@ -123,6 +188,20 @@
   });
 
   const st = { mode: 'free', left: 0, pay: {} };
+
+  // Footer otoritatif per exim: sesudah identitas tertangkap, angka /boot
+  // (basis perangkat) dikoreksi lewat /stat. Worker lama tanpa /stat -> diabaikan.
+  async function refreshStat() {
+    const id = await identParams(0);
+    if (!id.e && !id.n) { return; }
+    const r = await call('/stat', id);
+    if (r && r.ok && r.mode) {
+      st.mode = r.mode;
+      if (typeof r.left === 'number') { st.left = r.left; }
+      if (C.onStatus) { C.onStatus(); }
+    }
+  }
+
   const C = {
     W, API, sleep, AuthError, auth, claims, getIdUser, getIdent, tokenLeftMs, origFetch,
     GM_xmlhttpRequest, XLSX: (typeof XLSX !== 'undefined' ? XLSX : W.XLSX), ver: VER,
@@ -130,7 +209,8 @@
     statusText: () => (st.mode === 'full' ? 'Lisensi aktif ✔' : 'Gratis · sisa ' + st.left + 'x'),
     showLock: (why) => showLock(why),
     gate: async (kind) => {
-      const r = await call('/use', { a: kind });
+      const id = await identParams(2500);
+      const r = await call('/use', Object.assign({ a: kind }, id));
       if (r && r.mode) { st.mode = r.mode; if (typeof r.left === 'number') { st.left = r.left; } if (C.onStatus) { C.onStatus(); } }
       if (r && r.ok) { return true; }
       if (r && r.reason === 'quota') { showLock('quota'); }
@@ -145,6 +225,8 @@
     const old = document.getElementById('ckLockBox'); if (old) { old.remove(); }
     const p = st.pay || {};
     const full = st.mode === 'full';
+    let storedKey = '';
+    try { storedKey = String(GM_getValue('ck_key', '') || ''); } catch (e) {}
     const box = document.createElement('div');
     box.id = 'ckLockBox';
     box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font:13px/1.45 system-ui,Segoe UI,Arial,sans-serif;';
@@ -159,12 +241,16 @@
           <b>Cara beli</b><br>
           Harga: <b>${esc(p.harga || '-')}</b><br>
           Transfer ke <b>${esc(p.bank || '')} ${esc(p.rek || '')}</b><br>a.n. ${esc(p.an || '')}<br>
-          Kirim bukti transfer + <b>Device ID</b> di bawah ke CP: <b>${esc(p.cp || '')}</b>
+          Kirim bukti transfer ke CP: <b>${esc(p.cp || '')}</b>
         </div>`}
-        <div style="margin-bottom:10px;">Device ID:<br>
+        <div style="margin-bottom:10px;">Device ID (referensi dukungan):<br>
           <div style="display:flex;gap:6px;"><input id="ckDevId" readonly value="${esc(devId)}" style="flex:1;padding:5px;font:12px monospace;user-select:all"><button id="ckDevCopy" style="padding:5px 10px;cursor:pointer">Salin</button></div>
         </div>
-        ${full ? '' : `
+        ${full ? `
+        <div style="border-top:1px solid #eee;padding-top:10px;margin-bottom:6px;">Pindah perusahaan? Lepaskan lisensi dari akun ini dulu:<br>
+          <div style="display:flex;gap:6px;margin-top:4px;"><input id="ckRelKey" value="${esc(storedKey)}" placeholder="CEISA-XXXX-XXXX-XXXX-XXXX" style="flex:1;padding:6px;font:13px monospace;text-transform:uppercase"><button id="ckRelGo" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #bbb;background:#f3f3f3">Lepaskan</button></div>
+        </div>
+        <div id="ckRelMsg" style="min-height:18px;color:#b00020;margin-bottom:8px;"></div>` : `
         <div style="margin-bottom:6px;">License key:<br><input id="ckKeyIn" placeholder="CEISA-XXXX-XXXX-XXXX-XXXX" style="width:100%;box-sizing:border-box;padding:6px;font:13px monospace;text-transform:uppercase"></div>
         <div id="ckKeyMsg" style="min-height:18px;color:#b00020;margin-bottom:8px;"></div>`}
         <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -181,14 +267,48 @@
         const k = $$('#ckKeyIn').value.trim();
         if (!k) { $$('#ckKeyMsg').textContent = 'Isi license key dulu.'; return; }
         $$('#ckKeyMsg').style.color = '#555'; $$('#ckKeyMsg').textContent = 'Memeriksa…';
-        const r = await call('/activate', { k });
+        const id = await identParams(3000);
+        if (!id.e) {
+          $$('#ckKeyMsg').style.color = '#b00020';
+          $$('#ckKeyMsg').textContent = 'Akun CEISA-mu belum terbaca. Buka dulu tabel Dokumen Pabean sampai daftarnya tampil, lalu klik Aktifkan lagi — agar lisensi menempel ke akunmu, bukan ke perangkat ini.';
+          return;
+        }
+        const r = await call('/activate', { k, e: id.e });
         if (r && r.ok) {
+          try { GM_setValue('ck_key', k.toUpperCase()); } catch (e) {}
           st.mode = 'full'; if (C.onStatus) { C.onStatus(); }
           $$('#ckKeyMsg').style.color = '#1a7f37'; $$('#ckKeyMsg').textContent = 'Aktif! Memuat ulang halaman…';
           setTimeout(() => location.reload(), 900);
         } else {
-          const m = { invalid_key: 'Key tidak valid.', key_other_device: 'Key ini sudah dipakai di perangkat lain.', network: 'Tidak bisa terhubung ke server.' };
+          const m = {
+            invalid_key: 'Key tidak valid.',
+            key_other_user: 'Key ini sudah terikat ke akun CEISA lain.',
+            key_other_device: 'Key ini sudah dipakai di perangkat lain.',
+            transfer_cooldown: 'Key ini baru dilepas dari akun lain. Bisa dipindah lagi dalam ' + ((r && r.waitDays) || '?') + ' hari — atau hubungi penjual untuk dibantu pindah sekarang.',
+            network: 'Tidak bisa terhubung ke server.'
+          };
           $$('#ckKeyMsg').style.color = '#b00020'; $$('#ckKeyMsg').textContent = m[r && r.reason] || 'Gagal mengaktifkan.';
+        }
+      };
+    } else {
+      $$('#ckRelGo').onclick = async () => {
+        const k = $$('#ckRelKey').value.trim();
+        if (!k) { $$('#ckRelMsg').textContent = 'Isi license key yang mau dilepas dulu.'; return; }
+        $$('#ckRelMsg').style.color = '#555'; $$('#ckRelMsg').textContent = 'Memeriksa…';
+        const id = await identParams(3000);
+        if (!id.e) {
+          $$('#ckRelMsg').style.color = '#b00020';
+          $$('#ckRelMsg').textContent = 'Akun CEISA-mu belum terbaca. Buka dulu tabel Dokumen Pabean sampai daftarnya tampil, lalu coba lagi.';
+          return;
+        }
+        const r = await call('/release', { k, e: id.e });
+        if (r && r.ok) {
+          try { GM_setValue('ck_key', ''); } catch (e) {}
+          $$('#ckRelMsg').style.color = '#1a7f37'; $$('#ckRelMsg').textContent = 'Lisensi dilepas dari akun ini. Memuat ulang halaman…';
+          setTimeout(() => location.reload(), 900);
+        } else {
+          const m = { invalid_key: 'Key tidak valid.', not_bound: 'Key itu tidak terikat ke akun ini.', network: 'Tidak bisa terhubung ke server.' };
+          $$('#ckRelMsg').style.color = '#b00020'; $$('#ckRelMsg').textContent = m[r && r.reason] || 'Gagal melepas lisensi.';
         }
       };
     }
@@ -198,12 +318,43 @@
      BOOT: minta kode inti ke server, lalu jalankan
      ========================================================================= */
   const onReady = (fn) => { if (document.body) { fn(); } else { document.addEventListener('DOMContentLoaded', fn); } };
+
+  function runCore(code) {
+    try { new Function('C', code)(C); }
+    catch (e) { console.error('[CEISA] gagal menjalankan kode inti', e); }
+  }
+
+  // /boot menolak memberi core (jatah perangkat habis), tetapi exim-nya bisa
+  // saja masih punya jatah / berlisensi. Begitu identitas tertangkap dari
+  // lalu lintas portal, periksa /stat; bila berhak, minta core sekali lagi
+  // dengan identitas itu dan jalankan.
+  async function rescueWatch() {
+    for (let i = 0; i < 24; i++) {
+      await sleep(1500);
+      const id = await identParams(0);
+      if (!id.e && !id.n) { continue; }
+      const s = await call('/stat', id);
+      if (!s || !s.ok || !s.mode) { continue; }
+      if (s.mode !== 'full' && !(s.left > 0)) { return; }
+      const bp = { v: VER }; if (id.e) { bp.e = id.e; } if (id.n) { bp.n = id.n; }
+      const r = await call('/boot', bp);
+      if (r && r.ok && r.code) {
+        st.mode = r.mode; st.left = r.left || 0; st.pay = r.pay || {};
+        const old = document.getElementById('ckLockBox'); if (old) { old.remove(); }
+        runCore(r.code);
+      }
+      return;
+    }
+  }
+
   (async () => {
-    const r = await call('/boot', { v: VER });
+    const ci = cachedIdent();
+    const bp = { v: VER }; if (ci) { if (ci.e) { bp.e = ci.e; } if (ci.n) { bp.n = ci.n; } }
+    const r = await call('/boot', bp);
     if (!r || !r.ok) { console.warn('[CEISA] boot gagal', r && r.reason); return; }
     st.mode = r.mode; st.left = r.left || 0; st.pay = r.pay || {};
-    if (!r.code) { onReady(() => showLock('quota')); return; }   // jatah habis & belum berlisensi
-    try { new Function('C', r.code)(C); }
-    catch (e) { console.error('[CEISA] gagal menjalankan kode inti', e); }
+    if (!r.code) { onReady(() => { showLock('quota'); rescueWatch(); }); return; }   // jatah habis & belum berlisensi
+    runCore(r.code);
+    setTimeout(() => { refreshStat(); }, 1200);
   })();
 })();
