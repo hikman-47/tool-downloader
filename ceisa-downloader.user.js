@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.3
+// @version      3.4
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.3';
+  const VER = '3.4';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -163,6 +163,13 @@
     return null;
   };
 
+  // Username CEISA yang sedang login (untuk ditampilkan di kotak lisensi).
+  const myUser = () => {
+    if (identCache && identCache.user) { return identCache.user; }
+    const c = cachedIdent();
+    return (c && c.u) || '';
+  };
+
   /* =========================================================================
      LISENSI: Device ID, panggilan server, panel kunci
      ========================================================================= */
@@ -208,7 +215,11 @@
     W, API, sleep, AuthError, auth, claims, getIdUser, getIdent, tokenLeftMs, origFetch,
     GM_xmlhttpRequest, XLSX: (typeof XLSX !== 'undefined' ? XLSX : W.XLSX), ver: VER,
     onStatus: null,
-    statusText: () => (st.mode === 'full' ? 'Lisensi aktif ✔' : 'Gratis · sisa ' + st.left + 'x'),
+    statusText: () => {
+      const u = myUser();
+      const dasar = st.mode === 'full' ? 'Lisensi aktif ✔' : 'Gratis · sisa ' + st.left + 'x';
+      return u ? dasar + ' · ' + u : dasar;
+    },
     showLock: (why) => showLock(why),
     gate: async (kind) => {
       const id = await identParams(2500);
@@ -227,6 +238,7 @@
     const old = document.getElementById('ckLockBox'); if (old) { old.remove(); }
     const p = st.pay || {};
     const full = st.mode === 'full';
+    const uname = myUser();
     let storedKey = '';
     try { storedKey = String(GM_getValue('ck_key', '') || ''); } catch (e) {}
     const box = document.createElement('div');
@@ -245,6 +257,9 @@
           Transfer ke <b>${esc(p.bank || '')} ${esc(p.rek || '')}</b><br>a.n. ${esc(p.an || '')}<br>
           Kirim bukti transfer ke CP: <b>${esc(p.cp || '')}</b>
         </div>`}
+        <div style="margin-bottom:10px;">Akun CEISA:<br>
+          <div style="display:flex;gap:6px;"><input id="ckUname" readonly value="${esc(uname)}" placeholder="belum terbaca — buka tabel Dokumen Pabean dulu" style="flex:1;padding:5px;font:12px monospace;user-select:all"></div>
+        </div>
         <div style="margin-bottom:10px;">Device ID (referensi dukungan):<br>
           <div style="display:flex;gap:6px;"><input id="ckDevId" readonly value="${esc(devId)}" style="flex:1;padding:5px;font:12px monospace;user-select:all"><button id="ckDevCopy" style="padding:5px 10px;cursor:pointer">Salin</button></div>
         </div>
