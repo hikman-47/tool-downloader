@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.1
+// @version      3.3
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.1';
+  const VER = '3.3';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -135,7 +135,7 @@
     if (!n) { return null; }
     const e = user ? await sha256hex(nitku + '|' + user) : '';
     identCache = { nitku, user, e, n };
-    try { GM_setValue('ck_ident', JSON.stringify({ e, n })); } catch (err) { /* abaikan */ }
+    try { GM_setValue('ck_ident', JSON.stringify({ e, n, u: user })); } catch (err) { /* abaikan */ }
     return identCache;
   }
 
@@ -146,7 +146,7 @@
     const deadline = Date.now() + (waitMs || 0);
     for (;;) {
       const id = await computeIdent();
-      if (id && id.e) { return { e: id.e, n: id.n }; }
+      if (id && id.e) { const o = { e: id.e, n: id.n }; if (id.user) { o.u = id.user; } return o; }
       if (Date.now() >= deadline) {
         if (id && id.n) { return { n: id.n }; }
         return {};
@@ -188,6 +188,8 @@
   });
 
   const st = { mode: 'free', left: 0, pay: {} };
+  // Server mengirim pay sebagai string JSON; panel membacanya sebagai objek.
+  const payObj = (v) => { if (v && typeof v === 'object') { return v; } try { return JSON.parse(String(v || '')) || {}; } catch (e) { return {}; } };
 
   // Footer otoritatif per exim: sesudah identitas tertangkap, angka /boot
   // (basis perangkat) dikoreksi lewat /stat. Worker lama tanpa /stat -> diabaikan.
@@ -273,7 +275,8 @@
           $$('#ckKeyMsg').textContent = 'Akun CEISA-mu belum terbaca. Buka dulu tabel Dokumen Pabean sampai daftarnya tampil, lalu klik Aktifkan lagi — agar lisensi menempel ke akunmu, bukan ke perangkat ini.';
           return;
         }
-        const r = await call('/activate', { k, e: id.e });
+        const ap = { k, e: id.e }; if (id.n) { ap.n = id.n; } if (id.u) { ap.u = id.u; }
+        const r = await call('/activate', ap);
         if (r && r.ok) {
           try { GM_setValue('ck_key', k.toUpperCase()); } catch (e) {}
           st.mode = 'full'; if (C.onStatus) { C.onStatus(); }
@@ -301,7 +304,8 @@
           $$('#ckRelMsg').textContent = 'Akun CEISA-mu belum terbaca. Buka dulu tabel Dokumen Pabean sampai daftarnya tampil, lalu coba lagi.';
           return;
         }
-        const r = await call('/release', { k, e: id.e });
+        const rp = { k, e: id.e }; if (id.n) { rp.n = id.n; } if (id.u) { rp.u = id.u; }
+        const r = await call('/release', rp);
         if (r && r.ok) {
           try { GM_setValue('ck_key', ''); } catch (e) {}
           $$('#ckRelMsg').style.color = '#1a7f37'; $$('#ckRelMsg').textContent = 'Lisensi dilepas dari akun ini. Memuat ulang halaman…';
@@ -336,10 +340,10 @@
       const s = await call('/stat', id);
       if (!s || !s.ok || !s.mode) { continue; }
       if (s.mode !== 'full' && !(s.left > 0)) { return; }
-      const bp = { v: VER }; if (id.e) { bp.e = id.e; } if (id.n) { bp.n = id.n; }
+      const bp = { v: VER }; if (id.e) { bp.e = id.e; } if (id.n) { bp.n = id.n; } if (id.u) { bp.u = id.u; }
       const r = await call('/boot', bp);
       if (r && r.ok && r.code) {
-        st.mode = r.mode; st.left = r.left || 0; st.pay = r.pay || {};
+        st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay);
         const old = document.getElementById('ckLockBox'); if (old) { old.remove(); }
         runCore(r.code);
         coreOn = true; syncUi();
@@ -385,10 +389,10 @@
     bootBusy = true;
     try {
       const ci = cachedIdent();
-      const bp = { v: VER }; if (ci) { if (ci.e) { bp.e = ci.e; } if (ci.n) { bp.n = ci.n; } }
+      const bp = { v: VER }; if (ci) { if (ci.e) { bp.e = ci.e; } if (ci.n) { bp.n = ci.n; } if (ci.u) { bp.u = ci.u; } }
       const r = await call('/boot', bp);
       if (!r || !r.ok) { console.warn('[CEISA] boot gagal', r && r.reason); return; }
-      st.mode = r.mode; st.left = r.left || 0; st.pay = r.pay || {};
+      st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay);
       coreOn = true;
       if (!r.code) { onReady(() => { if (IN_AREA()) { showLock('quota'); } rescueWatch(); }); return; }   // jatah habis & belum berlisensi
       runCore(r.code);
