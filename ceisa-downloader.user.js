@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.0
+// @version      3.1
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.0';
+  const VER = '3.1';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -342,19 +342,79 @@
         st.mode = r.mode; st.left = r.left || 0; st.pay = r.pay || {};
         const old = document.getElementById('ckLockBox'); if (old) { old.remove(); }
         runCore(r.code);
+        coreOn = true; syncUi();
       }
       return;
     }
   }
 
-  (async () => {
-    const ci = cachedIdent();
-    const bp = { v: VER }; if (ci) { if (ci.e) { bp.e = ci.e; } if (ci.n) { bp.n = ci.n; } }
-    const r = await call('/boot', bp);
-    if (!r || !r.ok) { console.warn('[CEISA] boot gagal', r && r.reason); return; }
-    st.mode = r.mode; st.left = r.left || 0; st.pay = r.pay || {};
-    if (!r.code) { onReady(() => { showLock('quota'); rescueWatch(); }); return; }   // jatah habis & belum berlisensi
-    runCore(r.code);
-    setTimeout(() => { refreshStat(); }, 1200);
-  })();
+  /* =========================================================================
+     GERBANG ALAMAT (v3.1): core hanya dinyalakan di kawasan /dokumen-pabean/.
+     Portal berpindah halaman tanpa memuat ulang, jadi loader memantau
+     perpindahan alamat: masuk kawasan -> boot (atau tampilkan lagi),
+     keluar kawasan -> tampilan tool disembunyikan (proses unduhan yang
+     sedang berjalan TIDAK dihentikan, hanya tampilannya yang disembunyikan).
+     Di luar kawasan loader diam: tidak ada panggilan /boot, tidak ada ikon.
+     ========================================================================= */
+  const IN_AREA = () => /^\/dokumen-pabean(\/|$)/.test(location.pathname);
+  let coreOn = false;    // core sudah dijalankan di dokumen ini
+  let bootBusy = false;  // boot sedang berjalan
+  let uiHidden = false;  // tampilan sedang disembunyikan oleh gerbang
+
+  function hideEl(el) {
+    if (!el) { return; }
+    if (el.dataset.ckDisp === undefined) { el.dataset.ckDisp = el.style.display || ''; }
+    el.style.display = 'none';
+  }
+  function showEl(el) {
+    if (!el) { return; }
+    el.style.display = (el.dataset.ckDisp !== undefined ? el.dataset.ckDisp : '');
+  }
+  function syncUi() {
+    const p = document.getElementById('ckPanelMaster');
+    const l = document.getElementById('ckLockBox');
+    if (!IN_AREA()) {
+      if (p || l) { hideEl(p); hideEl(l); uiHidden = true; }
+    } else if (uiHidden) {
+      showEl(p); showEl(l); uiHidden = false;
+    }
+  }
+
+  async function startBoot() {
+    if (coreOn || bootBusy) { return; }
+    bootBusy = true;
+    try {
+      const ci = cachedIdent();
+      const bp = { v: VER }; if (ci) { if (ci.e) { bp.e = ci.e; } if (ci.n) { bp.n = ci.n; } }
+      const r = await call('/boot', bp);
+      if (!r || !r.ok) { console.warn('[CEISA] boot gagal', r && r.reason); return; }
+      st.mode = r.mode; st.left = r.left || 0; st.pay = r.pay || {};
+      coreOn = true;
+      if (!r.code) { onReady(() => { if (IN_AREA()) { showLock('quota'); } rescueWatch(); }); return; }   // jatah habis & belum berlisensi
+      runCore(r.code);
+      syncUi();
+      setTimeout(syncUi, 400);
+      setTimeout(() => { refreshStat(); }, 1200);
+    } finally { bootBusy = false; }
+  }
+
+  let lastPath = location.pathname;
+  function onRoute() {
+    lastPath = location.pathname;
+    if (IN_AREA() && !coreOn) { startBoot(); return; }
+    syncUi();
+  }
+  try {
+    const h = W.history;
+    if (h) {
+      const ps = h.pushState, rs = h.replaceState;
+      h.pushState = function (...a) { const r = ps.apply(this, a); setTimeout(onRoute, 0); return r; };
+      h.replaceState = function (...a) { const r = rs.apply(this, a); setTimeout(onRoute, 0); return r; };
+    }
+  } catch (e) { /* abaikan: pemantau berkala di bawah tetap bekerja */ }
+  W.addEventListener('popstate', onRoute);
+  W.addEventListener('hashchange', onRoute);
+  setInterval(() => { if (location.pathname !== lastPath) { onRoute(); } else { syncUi(); } }, 700);
+
+  if (IN_AREA()) { startBoot(); }
 })();
