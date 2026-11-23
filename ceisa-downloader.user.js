@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.6
+// @version      3.7
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.6';
+  const VER = '3.7';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -194,9 +194,12 @@
     });
   });
 
-  const st = { mode: 'free', left: 0, pay: {} };
+  const st = { mode: 'free', left: 0, pay: {}, qr: '' };
   // Server mengirim pay sebagai string JSON; panel membacanya sebagai objek.
   const payObj = (v) => { if (v && typeof v === 'object') { return v; } try { return JSON.parse(String(v || '')) || {}; } catch (e) { return {}; } };
+  // QR pembayaran kini dari server (field qr di /boot, Worker v3.2+).
+  // Worker lama tidak mengirim qr -> panel menampilkan teks cadangan.
+  const qrOf = (r) => (r && typeof r.qr === 'string' && /^data:image\//.test(r.qr)) ? r.qr : '';
 
   // Footer otoritatif per exim: sesudah identitas tertangkap, angka /boot
   // (basis perangkat) dikoreksi lewat /stat. Worker lama tanpa /stat -> diabaikan.
@@ -256,7 +259,6 @@
      100–499rb 12% · 500–999rb 6% · pas Rp1.000.000 2%.
      Kalimat pop-up: pool kalimat-gacha.md (21 Nov 2026), dipakai persis.
      ========================================================================= */
-  const QRIS_B64 = 'data:image/png;base64,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';
   const GACHA_MAX = 3;
   const GACHA_POOL = {
     ribuan: {
@@ -486,7 +488,7 @@
           <div id="ckHistory" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
           <div style="border-top:1px dashed #ccc;margin-top:12px;padding-top:10px;text-align:center;">
             <div style="font-size:13px;">Bayar pakai <b>QRIS</b> — semua e-wallet &amp; m-banking:</div>
-            <img src="${QRIS_B64}" alt="QRIS Hikman, Service" style="width:190px;height:190px;margin:8px auto;display:block;image-rendering:pixelated;background:#fff;">
+            ${st.qr ? `<img src="${esc(st.qr)}" alt="QRIS Hikman, Service" style="width:190px;height:190px;margin:8px auto;display:block;image-rendering:pixelated;background:#fff;">` : `<div style="font-size:13px;color:#b00020;margin:10px 0;">QR pembayaran tidak tersedia, hubungi CP.</div>`}
             <div style="font-size:13px;">a.n. <b>Hikman, Service</b></div>
             <div style="font-size:12px;color:#555;margin-top:4px;">QRIS ini tidak berisi nominal — masukkan nominal <b>sesuai hasil gacha terakhir</b> di aplikasi pembayarmu.</div>
             <div style="font-size:13px;margin-top:8px;">Kirim bukti pembayaran ke CP: <b>${cpHtml(p.cp || '')}</b></div>
@@ -603,7 +605,7 @@
       const bp = { v: VER }; if (id.e) { bp.e = id.e; } if (id.n) { bp.n = id.n; } if (id.u) { bp.u = id.u; }
       const r = await call('/boot', bp);
       if (r && r.ok && r.code) {
-        st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay);
+        st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay); st.qr = qrOf(r);
         const old = document.getElementById('ckLockBox'); if (old) { old.remove(); }
         runCore(r.code);
         coreOn = true; syncUi();
@@ -652,7 +654,7 @@
       const bp = { v: VER }; if (ci) { if (ci.e) { bp.e = ci.e; } if (ci.n) { bp.n = ci.n; } if (ci.u) { bp.u = ci.u; } }
       const r = await call('/boot', bp);
       if (!r || !r.ok) { console.warn('[CEISA] boot gagal', r && r.reason); return; }
-      st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay);
+      st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay); st.qr = qrOf(r);
       coreOn = true;
       if (!r.code) { onReady(() => { if (IN_AREA()) { showLock('quota'); } rescueWatch(); }); return; }   // jatah habis & belum berlisensi
       runCore(r.code);
