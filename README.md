@@ -49,6 +49,8 @@ Tool akan **update otomatis** lewat Tampermonkey, tidak perlu install ulang.
 1. Buka **portal.beacukai.go.id** dan login ke CEISA 4.0
 2. Masuk ke menu **Dokumen Pabean**
 3. Panel tool muncul di halaman tersebut (tidak muncul di halaman login)
+
+Panel bisa digeser ke posisi lain, dan akan mengecil sendiri beberapa detik setelah kursor meninggalkan area panel.
 4. Pilih fitur **PDF** atau **Excel**
 5. Isi pengaturan:
    - PDF: jenis dokumen (mis. BC 4.1) dan rentang Nomor Pengajuan
