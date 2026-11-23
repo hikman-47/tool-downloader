@@ -2,7 +2,7 @@
 
 Tool untuk mengunduh dokumen pabean di portal **CEISA 4.0** secara massal:
 
-- **PDF** : respon SPPB dan Detail Dokumen, per rentang Nomor Pengajuan
+- **PDF** : respon SPPB dan Detail Dokumen, per rentang Nomor Pengajuan (termasuk BC 2.7 In)
 - **Excel** : ekspor dokumen BC per jenis dokumen dan rentang tanggal
 
 Panel tool muncul otomatis di halaman **Dokumen Pabean** CEISA.
@@ -66,11 +66,28 @@ Tool akan **update otomatis** lewat Tampermonkey, tidak perlu install ulang.
 
 ## Jatah Gratis dan License Key
 
-- **Gratis 3x klik Mulai** per perangkat (gabungan PDF dan Excel)
-- Setelah jatah habis, tool meminta **license key**
-- Cara mendapatkan key: ikuti petunjuk pembayaran yang tampil di panel tool, lalu hubungi admin dengan menyertakan **Device ID** yang tampil di panel
-- Satu key berlaku untuk **satu perangkat**
-- Masukkan key di panel, klik aktivasi
+- Gratis **3x pakai per akun CEISA**, gabungan PDF dan Excel (1x proses unduhan yang jalan = 1x pakai). Hitungannya nempel ke akun CEISA-mu, bukan ke perangkat.
+- Sesudah jatah habis, panel akan meminta **license key**.
+- Satu key berlaku untuk **satu akun CEISA** — jadi per orang (eximer), bukan per perusahaan dan bukan per perangkat.
+- Pindah perusahaan? Key bisa dilepas dari akun lama lewat tombol **Lepaskan** di panel, lalu diaktifkan lagi di akun barumu.
+
+### Harga key: gacha
+
+Harga key tidak paten. Di panel ada tombol **GACHA HARGAMU**:
+
+1. Klik tombolnya, angka harga berputar seperti slot lalu berhenti di satu nominal.
+2. Kesempatanmu **3x**. Yang berlaku adalah **hasil gacha terakhir** — kalau kamu gacha lagi, harga sebelumnya hangus dan diganti hasil baru.
+3. Mau tahu peluang tiap kisaran harga? Klik ikon **?** di panel, di situ ada drop rate-nya.
+
+### Bayar: QRIS
+
+Pembayaran sekarang lewat **QRIS**, tidak lagi transfer ke rekening:
+
+1. Scan QR QRIS yang tampil di panel (a.n. **Hikman, Service**) pakai e-wallet atau m-banking apa saja.
+2. QR ini tidak berisi nominal. Ketik sendiri nominalnya di aplikasimu, persis sebesar **hasil gacha terakhirmu**.
+3. Kirim bukti pembayaran ke nomor CP yang tampil di panel.
+4. Kamu akan dikirimi license key. Tempel key-nya di panel, lalu klik **Aktifkan**.
+5. Saat aktivasi, pastikan baris **Akun CEISA** di panel sudah menampilkan username-mu (buka dulu tabel Dokumen Pabean sampai daftarnya tampil kalau masih kosong), supaya key nempel ke akun yang benar.
 
 ---
 
