@@ -2,7 +2,7 @@
 
 Tool untuk mengunduh dokumen pabean di portal **CEISA 4.0** secara massal:
 
-- **PDF** : respon SPPB dan Detail Dokumen, per rentang Nomor Pengajuan (termasuk BC 2.7 In)
+- **PDF** : respon SPPB dan Detail Dokumen, per rentang Nomor Pengajuan (BC 2.7 In dibaca dari daftar dashboard)
 - **Excel** : ekspor dokumen BC per jenis dokumen dan rentang tanggal
 
 Panel tool muncul otomatis di halaman **Dokumen Pabean** CEISA.
@@ -57,6 +57,10 @@ Panel bisa digeser ke posisi lain, dan akan mengecil sendiri beberapa detik sete
    - Excel: jenis dokumen dan rentang tanggal
 6. Klik **Mulai**, biarkan proses berjalan sampai selesai
 7. File otomatis terunduh ke folder Download
+
+### Khusus BC 2.7 In
+
+Daftar dokumen masuk dibaca dari tabel dashboard CEISA, jadi sebelum memulai, buka dashboard dan saring **Jenis Dokumen** ke **BC 2.7** agar scan berjalan cepat. Untuk perusahaan grup, isi tabel izin TPB tujuan (satu baris per unit: `NAMA = nomor izin`) agar hanya dokumen yang bertujuan ke unit Anda yang diunduh. Tabel boleh dikosongkan bila tidak memakai penyaringan unit.
 
 ### Format nama file
 
