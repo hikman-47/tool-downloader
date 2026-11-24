@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.11
+// @version      3.12
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.11';
+  const VER = '3.12';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -586,7 +586,7 @@
             <div style="font-size:13px;">Bayar harga gacha terakhirmu lewat <b>QRIS</b>:</div>
             <button id="ckBayarBtn" style="background:#1a73e8;color:#fff;font-weight:700;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:14.5px;width:100%;margin-top:9px;">BAYAR SEKARANG</button>
             <div id="ckBayarMsg" style="font-size:12.5px;color:#555;margin-top:7px;min-height:16px;">Lisensi aktif sendiri begitu pembayaran masuk — tanpa chat, tanpa kirim bukti.</div>`}
-            <div style="font-size:12.5px;margin-top:6px;">Butuh bantuan? Telegram: <a href="https://t.me/hikman047" target="_blank" rel="noopener" style="color:#1fae4b;font-weight:700;text-decoration:underline;">@hikman047</a></div>`}
+            <div style="font-size:12.5px;margin-top:6px;">Butuh bantuan? Telegram: <a href="https://t.me/CeisaToolBot" target="_blank" rel="noopener" style="color:#1fae4b;font-weight:700;text-decoration:underline;">@CeisaToolBot</a></div>`}
           </div>
           <div id="ckPop" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:5;border-radius:8px;">
             <div id="ckPopCard" style="background:#fff;border:2px solid #1fae4b;border-radius:14px;padding:14px 22px 18px;text-align:center;max-width:84%;box-shadow:0 10px 40px rgba(0,0,0,.4);">
