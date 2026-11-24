@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.7
+// @version      3.8
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.7';
+  const VER = '3.8';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -237,17 +237,20 @@
 
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  // Nomor CP dari server (pay.cp) dijadikan tautan WhatsApp: nomor tampil
-  // tetap seperti aslinya (format 08...), href memakai format internasional
-  // 62... lewat wa.me. Teks di luar nomor tetap di-escape seperti biasa.
+  // Nomor CP dari server (pay.cp) dijadikan tautan WhatsApp: sejak 3.8
+  // nomor TAMPIL disamarkan (4 digit awal + •••• + 4 digit akhir) agar
+  // tidak terbaca publik dari panel/screenshot; href tetap nomor penuh
+  // format internasional 62... lewat wa.me agar klik tetap sampai.
+  // Teks di luar nomor tetap di-escape seperti biasa.
   const cpHtml = (raw) => {
     const s = String(raw == null ? '' : raw);
     const m = s.match(/(\+?62|0)8\d{7,12}/);
     if (!m) { return esc(s); }
     const num = m[0];
     const intl = num.charAt(0) === '+' ? num.slice(1) : (num.charAt(0) === '0' ? '62' + num.slice(1) : num);
+    const tampil = num.length > 8 ? num.slice(0, 4) + '••••' + num.slice(-4) : num;
     return esc(s.slice(0, m.index)) +
-      '<a href="https://wa.me/' + intl + '" target="_blank" rel="noopener" style="color:#1fae4b;text-decoration:underline;">' + esc(num) + '</a>' +
+      '<a href="https://wa.me/' + intl + '" target="_blank" rel="noopener" style="color:#1fae4b;text-decoration:underline;">' + esc(tampil) + '</a>' +
       esc(s.slice(m.index + num.length));
   };
 
