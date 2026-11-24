@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.9
+// @version      3.10
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.9';
+  const VER = '3.10';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -559,7 +559,7 @@
           </div>
           <div id="ckRateBox" style="display:none;margin-top:8px;font-size:12px;line-height:1.65;border-top:1px dashed #ccc;padding-top:8px;">
             <div style="font-weight:700;margin-bottom:2px;">Drop rate gacha</div>
-            <div>Ribuan (Rp 1–9 rb) — <b>20%</b></div>
+            <div>Ribuan (Rp 5–9 rb) — <b>20%</b></div>
             <div>Puluhan ribu (Rp 10–49 rb) — <b>40%</b></div>
             <div>Puluhan ribu atas (Rp 50–99 rb) — <b>20%</b></div>
             <div>Ratusan ribu (Rp 100–499 rb) — <b>12%</b></div>
