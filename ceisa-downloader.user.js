@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.10
+// @version      3.11
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.10';
+  const VER = '3.11';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -194,7 +194,7 @@
     });
   });
 
-  const st = { mode: 'free', left: 0, pay: {}, qr: '', sysmode: 'on', upd: false, latest: '' };
+  const st = { mode: 'free', left: 0, pay: {}, qr: '', qrMode: '', sysmode: 'on', upd: false, latest: '' };
   // Server mengirim pay sebagai string JSON; panel membacanya sebagai objek.
   const payObj = (v) => { if (v && typeof v === 'object') { return v; } try { return JSON.parse(String(v || '')) || {}; } catch (e) { return {}; } };
   // QR pembayaran kini dari server (field qr di /boot, Worker v3.2+).
@@ -422,7 +422,7 @@
         btn.textContent = 'GACHA LAGI'; btn.style.display = 'block';
       } else {
         bigPrice.textContent = rpFmt(current());
-        priceNote.textContent = 'Kesempatan habis. Harga finalmu terkunci — transfer sebesar itu, key langsung jadi milikmu.';
+        priceNote.textContent = 'Kesempatan habis. Harga finalmu terkunci.';
         btn.style.display = 'none';
       }
     }
@@ -579,10 +579,14 @@
             ${st.sysmode === 'jualoff' ? `
             <div style="font-size:13.5px;font-weight:700;">Penjualan sedang ditutup</div>
             <div style="font-size:12.5px;color:#555;margin-top:4px;">Pembelian lisensi baru sementara ditutup. Tool tetap bisa dipakai sesuai kuotamu.</div>` : `
-            <div style="font-size:13px;">Bayar harga gacha terakhirmu lewat <b>Midtrans</b> — QRIS, VA bank, e-wallet:</div>
+            ${st.qrMode === 'dana' && st.qr ? `
+            <div style="font-size:13px;">Bayar harga gacha terakhirmu lewat <b>QR DANA</b> ini:</div>
+            <img src="${st.qr}" alt="QR DANA" style="width:210px;height:210px;margin-top:9px;border:1px solid #e1e4e8;border-radius:8px;">
+            <div style="font-size:12.5px;color:#555;margin-top:7px;">Bayar persis sebesar harga di atas. Sesudah bayar, kirim buktinya ke Telegram — kunci dikirim manual.</div>` : `
+            <div style="font-size:13px;">Bayar harga gacha terakhirmu lewat <b>QRIS</b>:</div>
             <button id="ckBayarBtn" style="background:#1a73e8;color:#fff;font-weight:700;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:14.5px;width:100%;margin-top:9px;">BAYAR SEKARANG</button>
-            <div id="ckBayarMsg" style="font-size:12.5px;color:#555;margin-top:7px;min-height:16px;">Lisensi aktif sendiri begitu pembayaran masuk — tanpa chat, tanpa kirim bukti.</div>
-            <div style="font-size:12.5px;margin-top:6px;">Butuh bantuan? CP: <b>${cpHtml(p.cp || '')}</b></div>`}
+            <div id="ckBayarMsg" style="font-size:12.5px;color:#555;margin-top:7px;min-height:16px;">Lisensi aktif sendiri begitu pembayaran masuk — tanpa chat, tanpa kirim bukti.</div>`}
+            <div style="font-size:12.5px;margin-top:6px;">Butuh bantuan? Telegram: <a href="https://t.me/hikman047" target="_blank" rel="noopener" style="color:#1fae4b;font-weight:700;text-decoration:underline;">@hikman047</a></div>`}
           </div>
           <div id="ckPop" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:5;border-radius:8px;">
             <div id="ckPopCard" style="background:#fff;border:2px solid #1fae4b;border-radius:14px;padding:14px 22px 18px;text-align:center;max-width:84%;box-shadow:0 10px 40px rgba(0,0,0,.4);">
@@ -696,7 +700,7 @@
       const bp = { v: VER }; if (id.e) { bp.e = id.e; } if (id.n) { bp.n = id.n; } if (id.u) { bp.u = id.u; }
       const r = await call('/boot', bp);
       if (r && r.ok && r.code) {
-        st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay); st.qr = qrOf(r);
+        st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay); st.qr = qrOf(r); st.qrMode = (r && r.qrMode === 'dana') ? 'dana' : '';
         const old = document.getElementById('ckLockBox'); if (old) { old.remove(); }
         runCore(r.code);
         coreOn = true; syncUi();
@@ -745,7 +749,7 @@
       const bp = { v: VER }; if (ci) { if (ci.e) { bp.e = ci.e; } if (ci.n) { bp.n = ci.n; } if (ci.u) { bp.u = ci.u; } }
       const r = await call('/boot', bp);
       if (!r || !r.ok) { console.warn('[CEISA] boot gagal', r && r.reason); return; }
-      st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay); st.qr = qrOf(r);
+      st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay); st.qr = qrOf(r); st.qrMode = (r && r.qrMode === 'dana') ? 'dana' : '';
       if (r.sysmode) { st.sysmode = r.sysmode; }
       if (r.upd) { st.upd = true; st.latest = r.latest || ''; }
       coreOn = true;
