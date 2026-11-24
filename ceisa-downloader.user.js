@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.8
+// @version      3.9
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.8';
+  const VER = '3.9';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -194,7 +194,7 @@
     });
   });
 
-  const st = { mode: 'free', left: 0, pay: {}, qr: '' };
+  const st = { mode: 'free', left: 0, pay: {}, qr: '', sysmode: 'on', upd: false, latest: '' };
   // Server mengirim pay sebagai string JSON; panel membacanya sebagai objek.
   const payObj = (v) => { if (v && typeof v === 'object') { return v; } try { return JSON.parse(String(v || '')) || {}; } catch (e) { return {}; } };
   // QR pembayaran kini dari server (field qr di /boot, Worker v3.2+).
@@ -206,10 +206,13 @@
   async function refreshStat() {
     const id = await identParams(0);
     if (!id.e && !id.n) { return; }
-    const r = await call('/stat', id);
+    const r = await call('/stat', Object.assign({ v: VER }, id));
     if (r && r.ok && r.mode) {
       st.mode = r.mode;
       if (typeof r.left === 'number') { st.left = r.left; }
+      if (r.sysmode) { st.sysmode = r.sysmode; }
+      if (typeof r.upd === 'boolean') { st.upd = r.upd; }
+      if (r.latest) { st.latest = r.latest; }
       if (C.onStatus) { C.onStatus(); }
     }
   }
@@ -226,10 +229,12 @@
     showLock: (why) => showLock(why),
     gate: async (kind) => {
       const id = await identParams(2500);
-      const r = await call('/use', Object.assign({ a: kind }, id));
+      const r = await call('/use', Object.assign({ a: kind, v: VER }, id));
       if (r && r.mode) { st.mode = r.mode; if (typeof r.left === 'number') { st.left = r.left; } if (C.onStatus) { C.onStatus(); } }
       if (r && r.ok) { return true; }
       if (r && r.reason === 'quota') { showLock('quota'); }
+      else if (r && r.reason === 'off') { showLock('off'); }
+      else if (r && r.reason === 'update') { showLock('update'); }
       else { alert('Tidak bisa menghubungi server lisensi. Cek koneksi internet lalu coba lagi.'); }
       return false;
     }
@@ -338,7 +343,7 @@
   const gachaRoll = () => {
     const r = Math.random() * 100;
     let lo, hi;
-    if (r < 20) { lo = 1; hi = 9; }
+    if (r < 20) { lo = 5; hi = 9; }
     else if (r < 60) { lo = 10; hi = 49; }
     else if (r < 80) { lo = 50; hi = 99; }
     else if (r < 92) { lo = 100; hi = 499; }
@@ -372,8 +377,24 @@
       (document.head || document.documentElement).appendChild(stl);
     }
     $$('#ckGachaHelp').onclick = () => { const rb = $$('#ckRateBox'); rb.style.display = rb.style.display === 'none' ? 'block' : 'none'; };
-    let draws = gachaLoad();
+    let draws = [];
     let rolling = false;
+    let srvReady = false;
+    // v3.9: undian kini dicatat server (terkunci per akun CEISA) — keadaan
+    // awal dibaca lewat /gacha?peek=1; tombol hanya aktif sesudah terbaca.
+    (async () => {
+      const idp = await identParams(0);
+      if (!idp.e && !idp.n) {
+        priceNote.textContent = 'Akun CEISA belum terbaca — buka tabel Dokumen Pabean dulu, lalu buka lagi panel ini.';
+        btn.style.display = 'none';
+        return;
+      }
+      const r = await call('/gacha', Object.assign({ peek: 1 }, idp));
+      if (r && r.ok) { draws = Array.isArray(r.draws) ? r.draws : []; srvReady = true; render(); }
+      else if (r && r.reason === 'jualoff') { priceNote.textContent = 'Penjualan sedang ditutup sementara.'; btn.style.display = 'none'; }
+      else if (r && r.reason === 'off') { priceNote.textContent = 'Tool sedang nonaktif sementara.'; btn.style.display = 'none'; }
+      else { priceNote.textContent = 'Tidak bisa terhubung ke server. Tutup lalu buka lagi panel ini.'; btn.style.display = 'none'; }
+    })();
     const current = () => (draws.length ? draws[draws.length - 1] : null);
     function render() {
       const left = GACHA_MAX - draws.length;
@@ -434,19 +455,83 @@
       popCard.classList.remove('ckPopAnim'); void popCard.offsetWidth; popCard.classList.add('ckPopAnim');
     }
     pop.onclick = () => { pop.style.display = 'none'; }; // pop-up TIDAK hilang otomatis; user menutup sendiri
-    btn.onclick = () => {
-      if (rolling || draws.length >= GACHA_MAX) { return; }
+    btn.onclick = async () => {
+      if (rolling || draws.length >= GACHA_MAX || !srvReady) { return; }
       rolling = true; render();
-      const target = gachaRoll();
+      const idp = await identParams(0);
+      const r = await call('/gacha', idp);
+      if (!r || !r.ok || typeof r.price !== 'number') {
+        rolling = false; render();
+        priceNote.textContent = 'Gagal mengundi dari server. Periksa koneksi lalu coba lagi.';
+        return;
+      }
+      const target = r.price;
+      draws = Array.isArray(r.draws) ? r.draws : draws.concat([target]);
       spinTo(target, () => {
         rolling = false;
-        draws = draws.concat([target]);
-        gachaSave(draws);
         render();
         showPop(target, GACHA_MAX - draws.length);
       });
     };
     render();
+  }
+
+  // v3.9: BAYAR lewat Midtrans — minta tagihan ke server, buka halaman
+  // pembayaran resmi Midtrans di jendela baru, lalu panel memeriksa
+  // sendiri sampai lisensi aktif (notifikasi server yang menerbitkan
+  // kunci; panel hanya menunggu status berubah).
+  function wireBayar(box) {
+    const btn = box.querySelector('#ckBayarBtn');
+    if (!btn) { return; }
+    const msg = box.querySelector('#ckBayarMsg');
+    let polling = false;
+    btn.onclick = async () => {
+      btn.style.opacity = '.6'; btn.style.pointerEvents = 'none';
+      msg.style.color = '#555'; msg.textContent = 'Membuat tagihan…';
+      const idp = await identParams(3000);
+      if (!idp.e) {
+        msg.style.color = '#b00020';
+        msg.textContent = 'Akun CEISA belum terbaca — buka tabel Dokumen Pabean dulu, lalu klik lagi.';
+        btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+        return;
+      }
+      const bp = { e: idp.e }; if (idp.n) { bp.n = idp.n; } if (idp.u) { bp.u = idp.u; }
+      const r = await call('/bill', bp);
+      if (!r || !r.ok) {
+        const m = {
+          no_price: 'Gacha dulu untuk dapat harga, baru bayar.',
+          jualoff: 'Penjualan sedang ditutup sementara.',
+          off: 'Tool sedang nonaktif sementara.',
+          already_full: 'Lisensimu sudah aktif.',
+          midtrans: 'Pembayaran sedang gangguan. Coba lagi nanti.',
+          network: 'Tidak bisa terhubung ke server.'
+        };
+        msg.style.color = '#b00020';
+        msg.textContent = m[r && r.reason] || 'Gagal membuat tagihan.';
+        btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+        return;
+      }
+      window.open(r.url, '_blank', 'width=480,height=720');
+      msg.style.color = '#555';
+      msg.textContent = 'Selesaikan pembayaran di jendela Midtrans — panel ini memeriksa otomatis…';
+      if (polling) { return; }
+      polling = true;
+      for (let i = 0; i < 75; i++) {
+        await sleep(4000);
+        const s = await call('/stat', Object.assign({ v: VER }, bp));
+        if (s && s.ok && s.mode === 'full') {
+          st.mode = 'full';
+          if (C.onStatus) { C.onStatus(); }
+          msg.style.color = '#1a7f37';
+          msg.textContent = 'Pembayaran diterima — lisensi aktif! Memuat ulang halaman…';
+          setTimeout(() => location.reload(), 1200);
+          return;
+        }
+      }
+      polling = false;
+      msg.textContent = 'Belum terdeteksi. Kalau sudah membayar, tutup lalu buka lagi panel ini.';
+      btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+    };
   }
 
   function showLock(why) {
@@ -459,13 +544,14 @@
     const box = document.createElement('div');
     box.id = 'ckLockBox';
     box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font:13px/1.45 system-ui,Segoe UI,Arial,sans-serif;';
-    const head = full ? 'Lisensi aktif ✔' : (why === 'quota' ? 'Jatah gratis habis' : 'Lisensi');
-    const sub = full ? 'Panel berjalan dalam versi penuh.' : (why === 'quota' ? 'Kamu sudah memakai 3x jatah gratis. Aktifkan license key untuk lanjut.' : 'Gratis ' + st.left + 'x lagi. Masukkan license key untuk versi penuh.');
+    const head = full ? 'Lisensi aktif ✔' : (why === 'quota' ? 'Jatah gratis habis' : (why === 'off' ? 'Tool sedang nonaktif' : (why === 'update' ? 'Update diperlukan' : 'Lisensi')));
+    const sub = full ? 'Panel berjalan dalam versi penuh.' : (why === 'quota' ? 'Kamu sudah memakai 3x jatah gratis. Aktifkan license key untuk lanjut.' : (why === 'off' ? 'Tool dinonaktifkan sementara oleh penyedia. Lisensi kamu tetap aman dan tidak berkurang. Silakan coba lagi nanti.' : (why === 'update' ? 'Versi tool kamu (' + VER + ') sudah lama' + (st.latest ? ' — terbaru ' + st.latest : '') + '. Update dulu untuk melanjutkan; lisensi kamu tidak berubah.' : 'Gratis ' + st.left + 'x lagi. Masukkan license key untuk versi penuh.')));
     box.innerHTML = `
       <div style="background:#fff;color:#222;border-radius:10px;width:min(440px,92vw);padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.4);">
         <div style="font-size:16px;font-weight:700;margin-bottom:2px;">${esc(head)}</div>
         <div style="color:#555;margin-bottom:12px;">${esc(sub)}</div>
-        ${full ? '' : `
+        ${why === 'update' && !full ? `<div style="margin-bottom:12px;"><a href="https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js" target="_blank" rel="noopener" style="display:block;text-align:center;background:#1a73e8;color:#fff;font-weight:700;padding:10px;border-radius:6px;text-decoration:none;">UPDATE SEKARANG</a></div>` : ''}
+        ${full || why === 'off' || why === 'update' ? '' : `
         <div style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:8px;padding:10px 12px;margin-bottom:12px;position:relative;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <b>Cara beli</b>
@@ -490,11 +576,13 @@
           </div>
           <div id="ckHistory" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
           <div style="border-top:1px dashed #ccc;margin-top:12px;padding-top:10px;text-align:center;">
-            <div style="font-size:13px;">Bayar pakai <b>QRIS</b> — semua e-wallet &amp; m-banking:</div>
-            ${st.qr ? `<img src="${esc(st.qr)}" alt="QRIS Hikman, Service" style="width:190px;height:190px;margin:8px auto;display:block;image-rendering:pixelated;background:#fff;">` : `<div style="font-size:13px;color:#b00020;margin:10px 0;">QR pembayaran tidak tersedia, hubungi CP.</div>`}
-            <div style="font-size:13px;">a.n. <b>Hikman, Service</b></div>
-            <div style="font-size:12px;color:#555;margin-top:4px;">QRIS ini tidak berisi nominal — masukkan nominal <b>sesuai hasil gacha terakhir</b> di aplikasi pembayarmu.</div>
-            <div style="font-size:13px;margin-top:8px;">Kirim bukti pembayaran ke CP: <b>${cpHtml(p.cp || '')}</b></div>
+            ${st.sysmode === 'jualoff' ? `
+            <div style="font-size:13.5px;font-weight:700;">Penjualan sedang ditutup</div>
+            <div style="font-size:12.5px;color:#555;margin-top:4px;">Pembelian lisensi baru sementara ditutup. Tool tetap bisa dipakai sesuai kuotamu.</div>` : `
+            <div style="font-size:13px;">Bayar harga gacha terakhirmu lewat <b>Midtrans</b> — QRIS, VA bank, e-wallet:</div>
+            <button id="ckBayarBtn" style="background:#1a73e8;color:#fff;font-weight:700;border:0;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:14.5px;width:100%;margin-top:9px;">BAYAR SEKARANG</button>
+            <div id="ckBayarMsg" style="font-size:12.5px;color:#555;margin-top:7px;min-height:16px;">Lisensi aktif sendiri begitu pembayaran masuk — tanpa chat, tanpa kirim bukti.</div>
+            <div style="font-size:12.5px;margin-top:6px;">Butuh bantuan? CP: <b>${cpHtml(p.cp || '')}</b></div>`}
           </div>
           <div id="ckPop" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:5;border-radius:8px;">
             <div id="ckPopCard" style="background:#fff;border:2px solid #1fae4b;border-radius:14px;padding:14px 22px 18px;text-align:center;max-width:84%;box-shadow:0 10px 40px rgba(0,0,0,.4);">
@@ -526,7 +614,7 @@
       </div>`;
     document.body.appendChild(box);
     const $$ = (s) => box.querySelector(s);
-    if (!full) { wireGacha(box); }
+    if (!full) { wireGacha(box); wireBayar(box); }
     $$('#ckLockClose').onclick = () => box.remove();
     $$('#ckDevCopy').onclick = async () => { try { await navigator.clipboard.writeText(devId); $$('#ckDevCopy').textContent = 'Tersalin'; } catch (e) { $$('#ckDevId').select(); } };
     if (!full) {
@@ -658,8 +746,10 @@
       const r = await call('/boot', bp);
       if (!r || !r.ok) { console.warn('[CEISA] boot gagal', r && r.reason); return; }
       st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay); st.qr = qrOf(r);
+      if (r.sysmode) { st.sysmode = r.sysmode; }
+      if (r.upd) { st.upd = true; st.latest = r.latest || ''; }
       coreOn = true;
-      if (!r.code) { onReady(() => { if (IN_AREA()) { showLock('quota'); } rescueWatch(); }); return; }   // jatah habis & belum berlisensi
+      if (!r.code) { onReady(() => { if (IN_AREA()) { showLock(st.upd ? 'update' : (st.sysmode === 'off' ? 'off' : 'quota')); } rescueWatch(); }); return; }   // jatah habis / nonaktif / update wajib
       runCore(r.code);
       syncUi();
       setTimeout(syncUi, 400);
