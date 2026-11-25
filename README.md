@@ -58,6 +58,14 @@ Panel bisa digeser ke posisi lain, dan akan mengecil sendiri beberapa detik sete
 6. Klik **Mulai**, biarkan proses berjalan sampai selesai
 7. File otomatis terunduh ke folder Download
 
+### Selama unduhan berjalan
+
+- Biarkan tab tempat tool berjalan apa adanya: jangan ditutup, jangan dimuat ulang, dan jangan dipakai membuka halaman lain. Halaman berganti = unduhan berhenti.
+- Kalau mau tetap kerja di CEISA (misalnya membuat dokumen), buka **tab baru** dengan login yang sama. Unduhan di tab lama tetap jalan.
+- Jangan menjalankan tool di dua tab sekaligus.
+- Tarikan yang berjalan di tab belakang bisa sedikit lebih lambat, itu normal.
+- Bila yang akan diunduh lebih dari 300 dokumen, muncul pertanyaan "Lanjut unduh?". Klik **OK** dulu sebelum pindah tab — pertanyaan yang tidak dijawab OK dianggap batal dan unduhan berhenti.
+
 ### Khusus BC 2.7 In
 
 Daftar dokumen masuk dibaca dari tabel dashboard CEISA, jadi sebelum memulai, buka dashboard dan saring **Jenis Dokumen** ke **BC 2.7** agar scan berjalan cepat. Untuk perusahaan grup, isi tabel izin TPB tujuan (satu baris per unit: `NAMA = nomor izin`) agar hanya dokumen yang bertujuan ke unit Anda yang diunduh. Tabel boleh dikosongkan bila tidak memakai penyaringan unit.
