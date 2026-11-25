@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.12
+// @version      3.13
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.12';
+  const VER = '3.13';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -544,13 +544,13 @@
     const box = document.createElement('div');
     box.id = 'ckLockBox';
     box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font:13px/1.45 system-ui,Segoe UI,Arial,sans-serif;';
-    const head = full ? 'Lisensi aktif ✔' : (why === 'quota' ? 'Jatah gratis habis' : (why === 'off' ? 'Tool sedang nonaktif' : (why === 'update' ? 'Update diperlukan' : 'Lisensi')));
-    const sub = full ? 'Panel berjalan dalam versi penuh.' : (why === 'quota' ? 'Kamu sudah memakai 3x jatah gratis. Aktifkan license key untuk lanjut.' : (why === 'off' ? 'Tool dinonaktifkan sementara oleh penyedia. Lisensi kamu tetap aman dan tidak berkurang. Silakan coba lagi nanti.' : (why === 'update' ? 'Versi tool kamu (' + VER + ') sudah lama' + (st.latest ? ' — terbaru ' + st.latest : '') + '. Update dulu untuk melanjutkan; lisensi kamu tidak berubah.' : 'Gratis ' + st.left + 'x lagi. Masukkan license key untuk versi penuh.')));
+    const head = why === 'update' ? 'Update diperlukan' : (why === 'off' ? 'Tool sedang nonaktif' : (full ? 'Lisensi aktif ✔' : (why === 'quota' ? 'Jatah gratis habis' : 'Lisensi')));
+    const sub = why === 'update' ? 'Versi tool kamu (' + VER + ') sudah lama' + (st.latest ? ' — terbaru ' + st.latest : '') + '. Update dulu untuk melanjutkan; lisensi kamu tidak berubah.' : (why === 'off' ? 'Tool dinonaktifkan sementara oleh penyedia. Lisensi kamu tetap aman dan tidak berkurang. Silakan coba lagi nanti.' : (full ? 'Panel berjalan dalam versi penuh.' : (why === 'quota' ? 'Kamu sudah memakai 3x jatah gratis. Aktifkan license key untuk lanjut.' : 'Gratis ' + st.left + 'x lagi. Masukkan license key untuk versi penuh.')));
     box.innerHTML = `
       <div style="background:#fff;color:#222;border-radius:10px;width:min(440px,92vw);padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.4);">
         <div style="font-size:16px;font-weight:700;margin-bottom:2px;">${esc(head)}</div>
         <div style="color:#555;margin-bottom:12px;">${esc(sub)}</div>
-        ${why === 'update' && !full ? `<div style="margin-bottom:12px;"><a href="https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js" target="_blank" rel="noopener" style="display:block;text-align:center;background:#1a73e8;color:#fff;font-weight:700;padding:10px;border-radius:6px;text-decoration:none;">UPDATE SEKARANG</a></div>` : ''}
+        ${why === 'update' ? `<div style="margin-bottom:12px;"><a href="https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js" target="_blank" rel="noopener" style="display:block;text-align:center;background:#1a73e8;color:#fff;font-weight:700;padding:10px;border-radius:6px;text-decoration:none;">UPDATE SEKARANG</a></div>` : ''}
         ${full || why === 'off' || why === 'update' ? '' : `
         <div style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:8px;padding:10px 12px;margin-bottom:12px;position:relative;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
