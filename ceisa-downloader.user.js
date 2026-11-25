@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.13
+// @version      3.14
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.13';
+  const VER = '3.14';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -126,10 +126,24 @@
 
   let identCache = null; // { nitku, user, e, n }
   async function computeIdent() {
-    const nitku = String(getIdent() || '').trim();
+    let nitku = String(getIdent() || '').trim();
     if (!nitku) { return null; }
     const cl = claims();
     const user = String(cl.preferred_username || cl.username || '').toLowerCase().trim();
+    // Portal dalam mode NPWP 15 membuat tangkapan identitas berisi NPWP lama
+    // (15 digit). Itu BUKAN identitas lisensi — lisensi selalu memakai
+    // identitas era NITKU, supaya panel tidak membaca akun sebagai akun lain.
+    // Urutan pakai: identitas tersimpan dari sesi NITKU terakhir (milik user
+    // yang sama) -> NITKU dari token -> apa adanya bila tak ada pilihan lain.
+    if (/^\d{15}$/.test(nitku)) {
+      const c = cachedIdent();
+      if (c && (c.e || c.n) && (!user || !c.u || user === c.u)) {
+        identCache = { nitku, user: user || c.u || '', e: c.e || '', n: c.n || '' };
+        return identCache;
+      }
+      const dariToken = String(cl.nitku || '').trim();
+      if (dariToken && !/^\d{15}$/.test(dariToken)) { nitku = dariToken; }
+    }
     if (identCache && identCache.nitku === nitku && identCache.user === user) { return identCache; }
     const n = await sha256hex(nitku);
     if (!n) { return null; }
