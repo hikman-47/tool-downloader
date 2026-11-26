@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CEISA 4.0 Tool Downloader by Hikman
 // @namespace    http://tampermonkey.net/
-// @version      3.19
+// @version      3.20
 // @description  Unduh Batch PDF (SPPB & Detail) dan Ekspor Excel dari portal CEISA 4.0 dalam satu panel. Gratis 3x pakai per akun, selanjutnya perlu license key.
 // @author       Hikman
 // @updateURL    https://raw.githubusercontent.com/hikman-47/tool-downloader/main/ceisa-downloader.user.js
@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   const SERVER = 'https://ceisa-tool.hikman47.workers.dev';
-  const VER = '3.19';
+  const VER = '3.20';
 
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const API = 'https://apis-gw.beacukai.go.id';
@@ -208,7 +208,7 @@
     });
   });
 
-  const st = { mode: 'free', left: 0, pay: {}, qr: '', qrMode: '', sysmode: 'on', upd: false, latest: '' };
+  const st = { mode: 'free', left: 0, pay: {}, qr: '', qrMode: '', sysmode: 'on', upd: false, latest: '', catatan: '' };
   // Server mengirim pay sebagai string JSON; panel membacanya sebagai objek.
   const payObj = (v) => { if (v && typeof v === 'object') { return v; } try { return JSON.parse(String(v || '')) || {}; } catch (e) { return {}; } };
   // QR pembayaran kini dari server (field qr di /boot, Worker v3.2+).
@@ -227,6 +227,7 @@
       if (r.sysmode) { st.sysmode = r.sysmode; }
       if (typeof r.upd === 'boolean') { st.upd = r.upd; }
       if (r.latest) { st.latest = r.latest; }
+      if (r.catatan) { st.catatan = r.catatan; }
       if (C.onStatus) { C.onStatus(); }
     }
   }
@@ -248,7 +249,7 @@
       if (r && r.ok) { return true; }
       if (r && r.reason === 'quota') { showLock('quota'); }
       else if (r && r.reason === 'off') { showLock('off'); }
-      else if (r && r.reason === 'update') { showLock('update'); }
+      else if (r && r.reason === 'update') { if (r.catatan) { st.catatan = r.catatan; } if (r.latest) { st.latest = r.latest; } showLock('update'); }
       else { alert('Tidak bisa menghubungi server lisensi. Cek koneksi internet lalu coba lagi.'); }
       return false;
     }
@@ -630,6 +631,41 @@
           <button id="ckLockClose" style="padding:7px 14px;border-radius:6px;cursor:pointer;border:1px solid #bbb;background:#f3f3f3">Tutup</button>
         </div>
       </div>`;
+    if (why === 'update') {
+      // Tampilan kotak update mengikuti tema panel: kaca hangat
+      // kekuningan, tombol kuning #fff200, gerak masuk memudar +
+      // mengembang. Blok "Yang baru" muncul bila server mengirim
+      // catatan rilis (field catatan, Worker v3.10+).
+      const kartu = box.firstElementChild;
+      if (kartu) {
+        kartu.style.background = 'linear-gradient(135deg, rgba(255,255,255,.95), rgba(255,247,200,.92))';
+        kartu.style.backdropFilter = 'blur(16px) saturate(170%)';
+        kartu.style.webkitBackdropFilter = 'blur(16px) saturate(170%)';
+        kartu.style.border = '1px solid rgba(255,255,255,.7)';
+        kartu.style.borderRadius = '14px';
+        kartu.style.boxShadow = '0 8px 32px rgba(60,50,0,.3), inset 0 1px 0 rgba(255,255,255,.85)';
+        kartu.style.animation = 'ckUpIn .3s cubic-bezier(.2,.9,.3,1.2)';
+        const gaya = document.createElement('style');
+        gaya.textContent = '@keyframes ckUpIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}';
+        kartu.appendChild(gaya);
+        const tombol = kartu.querySelector('a');
+        if (tombol) { tombol.style.background = '#fff200'; tombol.style.color = '#222'; tombol.style.borderRadius = '8px'; }
+        if (st.catatan) {
+          const blok = document.createElement('div');
+          blok.style.cssText = 'background:rgba(255,255,255,.6);border:1px solid rgba(120,100,0,.18);border-radius:10px;padding:10px 12px;margin-bottom:12px;';
+          const judul = document.createElement('div');
+          judul.style.cssText = 'font-weight:700;margin-bottom:4px;';
+          judul.textContent = 'Yang baru di versi ' + (st.latest || '') + ':';
+          const isi = document.createElement('div');
+          isi.style.cssText = 'font-size:12.5px;color:#444;line-height:1.55;';
+          isi.innerHTML = String(st.catatan).split('\n').filter((l) => l.trim()).map((l) => '• ' + esc(l)).join('<br>');
+          blok.appendChild(judul); blok.appendChild(isi);
+          if (tombol && tombol.parentElement) { kartu.insertBefore(blok, tombol.parentElement); }
+          else if (kartu.children[1]) { kartu.children[1].after(blok); }
+          else { kartu.appendChild(blok); }
+        }
+      }
+    }
     document.body.appendChild(box);
     const $$ = (s) => box.querySelector(s);
     if (!full) { wireGacha(box); wireBayar(box); }
@@ -765,7 +801,7 @@
       if (!r || !r.ok) { console.warn('[CEISA] boot gagal', r && r.reason); return; }
       st.mode = r.mode; st.left = r.left || 0; st.pay = payObj(r.pay); st.qr = qrOf(r); st.qrMode = (r && r.qrMode === 'dana') ? 'dana' : '';
       if (r.sysmode) { st.sysmode = r.sysmode; }
-      if (r.upd) { st.upd = true; st.latest = r.latest || ''; }
+      if (r.upd) { st.upd = true; st.latest = r.latest || ''; if (r.catatan) { st.catatan = r.catatan; } }
       coreOn = true;
       if (!r.code) { onReady(() => { if (IN_AREA()) { showLock(st.upd ? 'update' : (st.sysmode === 'off' ? 'off' : 'quota')); } rescueWatch(); }); return; }   // jatah habis / nonaktif / update wajib
       runCore(r.code);
