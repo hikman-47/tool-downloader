@@ -9,6 +9,16 @@ Panel tool muncul otomatis di halaman **Dokumen Pabean** CEISA.
 
 ---
 
+## Harga
+
+Harga normal lisensi: **Rp50.000** per orang (satu akun CEISA).
+
+- Sebelum membeli, ada jatah coba gratis **3x unduhan** (tarikan PDF dan Excel dihitung gabungan).
+- Di panel tool ada **gacha harga**: harga akhir ditentukan undian mulai dari Rp5.000. Yang berlaku hasil undian terakhir, dan drop rate-nya tampil terbuka di panel sebelum membeli.
+- Satu kunci untuk satu orang. Pindah komputer: lepas ikatan dulu di panel komputer lama, lalu aktifkan kunci yang sama di komputer baru.
+
+---
+
 ## Cara Install (2 langkah)
 
 ### Langkah 1. Pasang Tampermonkey (sekali saja)
