@@ -68,7 +68,28 @@ Panel bisa digeser ke posisi lain, dan akan mengecil sendiri beberapa detik sete
 
 ### Khusus BC 2.7 In
 
-Daftar dokumen masuk dibaca dari tabel dashboard CEISA, jadi sebelum memulai, buka dashboard dan saring **Jenis Dokumen** ke **BC 2.7** agar scan berjalan cepat. Untuk perusahaan grup, isi tabel izin TPB tujuan (satu baris per unit: `NAMA = nomor izin`) agar hanya dokumen yang bertujuan ke unit Anda yang diunduh. Tabel boleh dikosongkan bila tidak memakai penyaringan unit.
+Ikuti urutan ini sampai unduhan selesai:
+
+1. Buka dashboard CEISA, saring **Jenis Dokumen** ke **BC 2.7**.
+
+2. Di panel, isi daftar TPB tujuan dengan perusahaan kamu sendiri, satu baris per unit:
+
+   `Nama PT = Nomor izin KB`
+
+   Contoh: `PT Contoh Tekstil = 123/MK.4/WBC.10/2023`
+
+   Nama PT boleh disingkat. Isi sekali saja, kotak ini dipakai tab PDF dan tab Excel. Pastikan daftar ini tidak kosong sebelum menekan **Mulai**.
+
+3. Lakukan penarikan BC 2.7 In secara terpisah dari jenis BC lain.
+4. Pilih tab **PDF** atau **Excel**, isi rentang tanggalnya, lalu klik **Mulai**.
+
+5. Tunggu sampai unduhan selesai. Jangan tutup atau muat ulang tab ini selama proses berjalan.
+
+Kalau hasilnya kosong atau gagal, periksa tiga hal ini:
+
+- Dashboard sudah tersaring ke **BC 2.7**?
+- Daftar TPB tujuan sudah terisi nomor izin perusahaanmu?
+- Rentang tanggal sudah sesuai dengan data yang mau diambil?
 
 ### Format nama file
 
